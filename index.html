@@ -1,11 +1,12 @@
 ﻿
 <head>
     <meta charset="UTF-8">
-    <!-- 加入 minimal-ui 和 standalone 模式以優化手機顯示 -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, orientation=landscape, viewport-fit=cover">
+    <!-- 優化 viewport 設定，強制橫向與禁用縮放 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
-    <title>無盡之淵 - Infinite Dungeon (Mobile v23 Guide)</title>
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>無盡之淵 - Infinite Dungeon (Mobile v24 Fixed)</title>
     
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&display=swap');
@@ -14,8 +15,8 @@
             margin: 0; overflow: hidden; background-color: #000; color: #dcdcdc;
             font-family: 'Noto Serif TC', serif; user-select: none; -webkit-user-select: none;
             display: flex; flex-direction: column; 
-            /* 使用 dvh 以適應移動瀏覽器網址列 */
-            height: 100vh; height: 100dvh; 
+            width: 100vw; height: 100vh; /* Fallback */
+            height: 100dvh; /* Dynamic viewport height specifically for mobile browsers */
         }
 
         #game-viewport { position: relative; flex-grow: 1; overflow: hidden; cursor: crosshair; background: #050505; }
@@ -26,12 +27,13 @@
             padding: 5px 20px; box-sizing: border-box; z-index: 20;
             box-shadow: 0 -5px 20px rgba(0,0,0,0.9);
             position: relative;
-            flex-shrink: 0; /* 防止 UI 被壓縮 */
+            flex-shrink: 0;
+            transition: height 0.3s;
         }
 
         canvas { display: block; }
 
-        .globe-wrapper { position: relative; width: 90px; height: 90px; margin: 0 10px; flex-shrink: 0; }
+        .globe-wrapper { position: relative; width: 90px; height: 90px; margin: 0 10px; flex-shrink: 0; transition: all 0.3s; }
         .globe-container {
             width: 100%; height: 100%; background: #000; border-radius: 50%; border: 3px solid #555;
             box-shadow: inset 0 0 20px #000; overflow: hidden; position: relative;
@@ -53,7 +55,7 @@
             width: 60px; height: 60px; background: #111; border: 2px solid #00aaff; border-radius: 50%;
             display: flex; justify-content: center; align-items: center; font-size: 30px; cursor: pointer;
             box-shadow: 0 0 15px #00aaff; position: absolute; left: -80px; bottom: 10px;
-            z-index: 10;
+            z-index: 10; transition: all 0.3s;
         }
         #active-spell-icon { font-size: 28px; }
 
@@ -61,7 +63,7 @@
         #xp-bar-container { width: 100%; height: 6px; background: #222; border: 1px solid #555; border-radius: 4px; overflow: hidden; }
         #xp-bar-fill { height: 100%; background: #a3f; width: 0%; transition: width 0.2s; }
 
-        .hotbar { display: flex; gap: 8px; margin: 5px 0; align-items: center; background: #000; padding: 5px; border-radius: 8px; border: 1px solid #333; }
+        .hotbar { display: flex; gap: 8px; margin: 5px 0; align-items: center; background: #000; padding: 5px; border-radius: 8px; border: 1px solid #333; transition: all 0.3s; }
         .hotkey-slot {
             width: 42px; height: 42px; background: #1a1a1a; border: 2px solid #444; border-radius: 4px;
             position: relative; cursor: pointer; display: flex; justify-content: center; align-items: center;
@@ -77,14 +79,19 @@
 
         .system-btns { position: absolute; right: 20px; bottom: 20px; display: flex; flex-direction: column; gap: 8px; }
 
+        /* Game Windows - Default Desktop Style */
         .game-window {
             position: absolute; background: rgba(15, 15, 20, 0.98); border: 2px solid #555;
             box-shadow: 0 0 50px #000; display: none; flex-direction: column; pointer-events: auto; z-index: 200;
             max-height: 85vh; border-radius: 4px;
+            /* New: Center properly */
+            top: 50%; left: 50%; transform: translate(-50%, -50%);
         }
         
-        #inventory-window { width: 660px; height: 520px; top: 10%; right: 10%; left: auto; transform: none; display: none; }
-        #stash-window { width: 500px; height: 500px; top: 15%; left: 15%; transform: none; display: none; }
+        #inventory-window { width: 660px; height: 520px; }
+        #stash-window { width: 500px; height: 500px; }
+        #spellbook-window { width: 460px; height: 500px; }
+        #shop-window { width: 400px; height: 600px; }
         
         .inv-container { display: flex; flex-direction: row; flex-grow: 1; min-height: 0; overflow: hidden; }
         
@@ -144,7 +151,6 @@
         }
         .inv-qty { position: absolute; bottom: 1px; right: 2px; font-size: 10px; color: #fff; font-weight: bold; text-shadow: 1px 1px 0 #000; }
 
-        #shop-window { width: 400px; height: 600px; top: 10%; left: 5%; right: auto; transform: none; display:none; flex-direction:column; }
         .shop-items { flex-grow: 1; overflow-y: auto; padding: 10px; min-height: 0; }
         .shop-item { background: #1a1a1a; border: 1px solid #333; padding: 10px; margin-bottom: 5px; display: flex; justify-content: space-between; align-items: center; cursor: grab; border-radius: 4px; }
         .shop-item:hover { border-color: #d4af37; background: #252525; }
@@ -159,7 +165,6 @@
         }
         .shop-sell-zone.drag-over { background: #221; color: #d4af37; border-color: #d4af37; }
 
-        #spellbook-window { width: 460px; height: 500px; top: 15%; left: 15%; right: auto; }
         .spell-category { font-size: 14px; color: #aaa; margin: 10px 0 5px 0; padding-left: 5px; border-bottom: 1px solid #333; clear: both; width: 100%; grid-column: 1 / -1; }
         .spell-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 5px; padding: 10px; overflow-y: auto; align-content: start; }
         .spell-icon { width: 100%; aspect-ratio: 1; border: 1px solid #444; background: #111; display: flex; flex-direction: column; justify-content: center; align-items: center; font-size: 20px; cursor: pointer; position: relative; }
@@ -206,7 +211,15 @@
         .death-btn:hover { border-color: #f00; color: #fff; background: #300; }
 
         #start-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #000; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 999; }
-        .char-create-panel { background: #111; border: 2px solid #444; padding: 30px; width: 900px; display: flex; gap: 30px; border-radius: 8px; box-shadow: 0 0 100px rgba(0,0,0,0.8); max-height: 90vh; }
+        
+        /* Revised Start Panel for Mobile Responsiveness */
+        .char-create-panel { 
+            background: #111; border: 2px solid #444; padding: 30px; 
+            width: 900px; 
+            /* Added Constraints */
+            max-width: 95vw; max-height: 90vh; overflow-y: auto;
+            display: flex; gap: 30px; border-radius: 8px; box-shadow: 0 0 100px rgba(0,0,0,0.8); 
+        }
         .race-btn { padding: 12px; background: #222; border: 1px solid #444; color: #888; cursor: pointer; width: 100%; margin-bottom: 8px; text-align: left; font-size: 18px; border-radius: 4px; transition: 0.2s; }
         .race-btn.selected { background: #500; color: #fff; border-color: #f00; box-shadow: 0 0 15px rgba(255,0,0,0.3); }
         .gender-select { display: flex; gap: 10px; margin-bottom: 20px; }
@@ -240,10 +253,10 @@
             background: rgba(0,0,0,0.3); padding: 5px 15px; border-radius: 10px;
         }
         
-        /* 更新指南 Modal 樣式 */
+        /* Guide Modal Responsive */
         #guide-modal {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            width: 700px; max-height: 80vh; background: #151515; border: 2px solid #d4af37;
+            width: 700px; max-width: 95vw; max-height: 80vh; background: #151515; border: 2px solid #d4af37;
             padding: 30px; z-index: 1000; display: none; overflow-y: auto; color: #ccc;
             box-shadow: 0 0 50px rgba(0,0,0,0.8);
             border-radius: 8px;
@@ -255,13 +268,11 @@
         .guide-content li { margin-bottom: 3px; color: #aaa; font-size: 14px; line-height: 1.5; }
         .guide-content p { color: #aaa; font-size: 14px; margin: 5px 0; line-height: 1.5; }
         
-        /* 指南表格樣式 */
         .guide-table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 14px; color: #ccc; }
         .guide-table th { text-align: left; border-bottom: 1px solid #d4af37; color: #d4af37; padding: 5px; background: rgba(212, 175, 55, 0.1); }
         .guide-table td { border-bottom: 1px solid #333; padding: 5px; }
         .guide-table tr:hover { background: rgba(255,255,255,0.05); }
 
-        /* 新增：手機版戰鬥按鈕與全螢幕按鈕樣式 */
         .mobile-action-btn {
             position: absolute; width: 70px; height: 70px; border-radius: 50%;
             background: rgba(255, 255, 255, 0.1); border: 2px solid rgba(255, 255, 255, 0.3);
@@ -280,15 +291,96 @@
             background: rgba(0,0,0,0.5); color: white; border: 1px solid #555;
             padding: 5px 10px; cursor: pointer; font-size: 14px; border-radius: 4px;
         }
+
+        #tap-to-start {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; z-index: 99999;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            color: #d4af37; cursor: pointer; text-align: center;
+        }
+        #tap-to-start h1 { animation: burning 1.5s infinite alternate; }
+
+        /* =========================================
+           MOBILE OPTIMIZATIONS (Landscape)
+           ========================================= */
+        @media (max-width: 900px) and (orientation: landscape) {
+            /* Shrink UI Panel */
+            #ui-panel { height: 90px; padding: 0 10px; }
+            .globe-wrapper { width: 50px; height: 50px; margin: 0 2px; }
+            .globe-text { font-size: 12px; }
+            
+            /* Center Controls Squeeze */
+            #center-controls { gap: 2px; }
+            .hotbar { gap: 4px; padding: 2px; }
+            .hotkey-slot { width: 32px; height: 32px; font-size: 16px; }
+            .hotbar-separator { height: 25px; margin: 0 2px; }
+            .key-label { font-size: 8px; padding: 0 2px; top: -4px; left: -4px; }
+            
+            /* Spell Button Adjustment */
+            #spell-btn { width: 45px; height: 45px; font-size: 20px; left: -50px; bottom: 5px; }
+            #active-spell-icon { font-size: 20px; }
+            
+            /* Hide non-essential UI text on small screens */
+            #level-info { font-size: 14px; }
+            
+            /* Responsive Windows */
+            .game-window {
+                width: 90vw !important; /* Force width to fit screen */
+                height: 85vh !important; /* Force height to fit screen */
+                top: 50% !important; left: 50% !important;
+                transform: translate(-50%, -50%) !important; /* Center properly */
+                max-width: none !important;
+            }
+            
+            /* Character Creation Specifics */
+            .char-create-panel {
+                width: 95vw; height: 90vh; padding: 10px;
+                flex-direction: row; /* Keep row but shrink elements */
+                gap: 15px;
+            }
+            #race-list { width: 160px; overflow-y: auto; }
+            .race-btn { padding: 8px; font-size: 14px; }
+            h2#preview-race { font-size: 24px; margin-bottom: 5px; }
+            #preview-desc { font-size: 12px; height: 50px; overflow-y: auto; }
+            #preview-icon { font-size: 50px; }
+            .stat-bar { height: 5px; margin: 3px 0; }
+            
+            /* Inventory Specifics */
+            .inv-container { flex-direction: row; }
+            .stats-sidebar { width: 100px; padding: 8px; font-size: 11px; }
+            .paper-doll-container { width: 160px; }
+            .doll-slot { transform: scale(0.85); }
+            #slot-helm { left: 60px; }
+            #slot-armor { left: 60px; }
+            #slot-necklace { left: 110px; }
+            
+            /* Buttons Position Fix */
+            #btn-attack { right: 80px; bottom: 20px; width: 60px; height: 60px; font-size: 28px; }
+            #btn-magic { right: 20px; bottom: 80px; width: 60px; height: 60px; font-size: 28px; }
+            #joystick-container { bottom: 20px; left: 20px; width: 100px; height: 100px; }
+            
+            /* Minimap */
+            #minimap-container { width: 100px; height: 100px; top: 5px; right: 5px; }
+            
+            /* Start Screen Text */
+            #start-screen h1 { font-size: 50px !important; letter-spacing: 5px !important; margin-bottom: 20px; }
+            #main-menu .action-btn { font-size: 20px !important; padding: 15px 40px !important; width: 250px !important; }
+        }
     </style>
 </head>
 <body onload="init()">
 
+<!-- 強制全螢幕覆蓋層 -->
+<div id="tap-to-start" onclick="enterGameFullscreen()">
+    <h1>無盡之淵</h1>
+    <p style="font-size:20px; color:#aaa;">點擊畫面進入全螢幕模式</p>
+    <p style="font-size:14px; color:#666; margin-top:20px;">(建議使用橫向遊玩)</p>
+</div>
+
 <div id="game-viewport">
     <canvas id="gameCanvas" ondragover="event.preventDefault();" ondrop="handleDropToWorld(event)"></canvas>
     
-    <!-- 新增全螢幕按鈕 -->
-    <button id="btn-fullscreen" onclick="toggleFullScreen()">⛶ 全螢幕</button>
+    <button id="btn-fullscreen" onclick="toggleFullScreen()" style="display:none;">⛶</button>
 
     <div id="floating-text-container" style="position: absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; overflow:hidden;"></div>
     <div id="joystick-container"><div id="joystick-knob"></div></div>
@@ -799,7 +891,7 @@ class PlayerClass {
         if(sKeys.length > 1) this.hotbar[5] = sKeys[1];
         
         this.activeSpell = sKeys.length > 0 ? sKeys[0] : null;
-        this.atkCd = 0; this.cooldowns = {}; // FIX: Added individual spell cooldowns
+        this.atkCd = 0; this.cooldowns = {}; 
         this.path = []; this.targetEntity = null; this.attackRequested = false; 
         this.attackAnimTimer = 0;
         this.moveSpeed = 90; 
@@ -1965,16 +2057,34 @@ function toggleFullScreen() {
 
 function checkMobile() {
     // Basic detection for touch devices or small screens
-    const isMobile = ('ontouchstart' in window) || (window.innerWidth < 800);
+    const isMobile = ('ontouchstart' in window) || (window.innerWidth < 900);
     if (isMobile) {
         document.getElementById('btn-attack').style.display = 'flex';
         document.getElementById('btn-magic').style.display = 'flex';
         document.getElementById('joystick-container').style.display = 'block';
+        document.getElementById('btn-fullscreen').style.display = 'none'; // Use tap to start instead
     } else {
         document.getElementById('btn-attack').style.display = 'none';
         document.getElementById('btn-magic').style.display = 'none';
         document.getElementById('joystick-container').style.display = 'none';
+        document.getElementById('tap-to-start').style.display = 'none'; // Hide overlay on desktop
     }
+}
+
+function enterGameFullscreen() {
+    let elem = document.documentElement;
+    
+    // Request fullscreen
+    if (elem.requestFullscreen) {
+        elem.requestFullscreen().catch(err => console.log(err));
+    } else if (elem.webkitRequestFullscreen) { /* Safari */
+        elem.webkitRequestFullscreen();
+    } else if (elem.msRequestFullscreen) { /* IE11 */
+        elem.msRequestFullscreen();
+    }
+    
+    document.getElementById('tap-to-start').style.display = 'none';
+    checkMobile();
 }
 
 function getNearestEnemy(range=300) {
@@ -2032,10 +2142,27 @@ function handleMobileMagic(e) {
     castSpell();
 }
 
+function toggleMusic() {
+    AudioSys.isMuted = !AudioSys.isMuted;
+    if(AudioSys.isMuted) {
+        AudioSys.stopBGM();
+        if(AudioSys.ctx) AudioSys.ctx.suspend();
+        document.getElementById('btn-music').innerText = "🔇 音樂";
+    } else {
+        if(AudioSys.ctx) AudioSys.ctx.resume();
+        AudioSys.playBGM();
+        document.getElementById('btn-music').innerText = "🔊 音樂";
+    }
+}
+
 function init() { 
     gameCanvas = document.getElementById('gameCanvas'); gameCtx = gameCanvas.getContext('2d'); minimapCanvas = document.getElementById('minimap'); minimapCtx = minimapCanvas.getContext('2d'); const rl = document.getElementById('race-list'); rl.innerHTML = ''; Object.keys(RACES).forEach(k=>{ const b = document.createElement('button'); b.className = 'race-btn'; b.innerText = RACES[k].name; b.onclick = () => selectRace(k, b); rl.appendChild(b); }); selectRace('HUMAN', rl.firstChild); 
     
-    window.addEventListener('resize', ()=>{ gameCanvas.width=window.innerWidth; gameCanvas.height=window.innerHeight-140; checkMobile(); }); 
+    window.addEventListener('resize', ()=>{ 
+        gameCanvas.width=window.innerWidth; 
+        gameCanvas.height=window.innerHeight - document.getElementById('ui-panel').offsetHeight; 
+        checkMobile(); 
+    }); 
     window.dispatchEvent(new Event('resize')); 
     
     gameCanvas.addEventListener('mousemove', e => { mouse.wx = e.clientX - gameCanvas.width/2 + game.cam.x; mouse.wy = e.clientY - gameCanvas.height/2 + game.cam.y; }); 
